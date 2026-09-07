@@ -1,0 +1,60 @@
+# Minato Wealth — Market Observatory nightly refresh.
+# Builds the dashboard from public data with refresh.py and commits the result as
+# index.html on main. GitHub Pages redeploys automatically from that commit.
+# A failed build leaves the previous page in place and emails the repository owner.
+name: Nightly refresh
+
+on:
+  schedule:
+    - cron: "30 5 * * 1-5"   # weekdays 05:30 UTC
+  workflow_dispatch:          # manual run from the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Restore bridge cache (dated npm tarballs already fetched)
+        uses: actions/cache@v4
+        with:
+          path: bridge_cache
+          key: bridge-cache-${{ github.run_id }}
+          restore-keys: |
+            bridge-cache-
+
+      - name: Build dashboard (fetch, validate, inject)
+        run: python3 refresh.py | tee refresh.log
+
+      - name: Write index.html with noindex
+        run: |
+          python3 - <<'PY'
+          html = open('Minato-Market-Observatory.html', encoding='utf-8').read()
+          marker = '<meta charset="utf-8">'
+          assert marker in html, 'charset meta not found'
+          html = html.replace(marker, marker + '\n<meta name="robots" content="noindex, nofollow">', 1)
+          open('index.html', 'w', encoding='utf-8').write(html)
+          print('index.html', len(html.encode()), 'bytes')
+          PY
+
+      - name: Commit and push if changed
+        run: |
+          DATE=$(grep -o 'data to [0-9-]*' refresh.log | head -1 | awk '{print $3}')
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "index.html unchanged — nothing to publish"
+            exit 0
+          fi
+          git commit -m "Nightly refresh — data to ${DATE}"
+          git push

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minato Wealth — Market Observatory</title>
+<style>
+  :root{
+    color-scheme: light;
+    --navy:#1B3664;
+    --surface-1:#fcfcfb; --page:#f9f9f7;
+    --ink-1:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+    --s-usd:#2a78d6; --s-eur:#008300; --s-jpy:#e87ba4; --s-gold:#eda100;
+    --s-chf:#1baf7a; --s-brent:#eb6834; --s-silver:#4a3aa7; --s-wti:#e34948;
+    --chip-on:#1B3664; --chip-on-ink:#ffffff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --surface-1:#1a1a19; --page:#0d0d0d;
+      --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+      --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+      --s-usd:#3987e5; --s-eur:#008300; --s-jpy:#d55181; --s-gold:#c98500;
+      --s-chf:#199e70; --s-brent:#d95926; --s-silver:#9085e9; --s-wti:#e66767;
+      --chip-on:#4a6698; --chip-on-ink:#ffffff;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --surface-1:#1a1a19; --page:#0d0d0d;
+    --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s-usd:#3987e5; --s-eur:#008300; --s-jpy:#d55181; --s-gold:#c98500;
+    --s-chf:#199e70; --s-brent:#d95926; --s-silver:#9085e9; --s-wti:#e66767;
+    --chip-on:#4a6698; --chip-on-ink:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink-1);
+    font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;}
+  header.masthead{background:var(--navy);color:#fff;padding:22px 28px 18px;}
+  header.masthead h1{margin:0;font-family:Georgia,"Times New Roman",serif;font-weight:600;
+    font-size:26px;letter-spacing:.2px}
+  header.masthead .sub{color:#c7d2e4;font-size:13.5px;margin-top:4px}
+  header.masthead .sub b{color:#fff;font-weight:600}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 40px}
+  /* filter row */
+  .filters{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:6px 0 16px}
+  .fgroup{display:flex;gap:4px;align-items:center;background:var(--surface-1);
+    border:1px solid var(--border);border-radius:10px;padding:4px}
+  .fgroup .lbl{font-size:12px;color:var(--ink-3);padding:0 6px 0 8px}
+  button.seg{border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:13px;
+    padding:5px 11px;border-radius:7px;cursor:pointer;white-space:nowrap}
+  button.seg:hover{background:rgba(128,128,128,.10)}
+  button.seg[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-ink);font-weight:600}
+  .custom-range{display:none;gap:6px;align-items:center;font-size:13px;color:var(--ink-2)}
+  .custom-range input{font:inherit;padding:4px 6px;border:1px solid var(--border);
+    border-radius:6px;background:var(--surface-1);color:var(--ink-1)}
+  .spacer{flex:1}
+  /* instrument chips */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+  .chip{display:flex;gap:8px;align-items:center;border:1px solid var(--border);
+    background:var(--surface-1);border-radius:999px;padding:6px 14px 6px 10px;cursor:pointer;
+    font-size:13.5px;color:var(--ink-2);user-select:none}
+  .chip .key{width:14px;height:0;border-top:3px solid var(--c);border-radius:2px}
+  .chip .key.dash{border-top-style:dashed}
+  .chip[aria-pressed="true"]{border-color:var(--c);color:var(--ink-1);
+    box-shadow:inset 0 0 0 1px var(--c)}
+  .chip[aria-pressed="false"] .key{opacity:.35}
+  /* cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+  .card{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;
+    padding:16px 16px 10px;position:relative}
+  .card.wide{grid-column:1/-1}
+  .card h3{margin:0 0 2px;font-size:14px;font-weight:600;color:var(--ink-1);display:flex;gap:8px;align-items:center}
+  .card h3 .key{width:16px;border-top:3px solid var(--c);border-radius:2px}
+  .statrow{display:flex;gap:14px;align-items:baseline;margin:2px 0 6px;flex-wrap:wrap}
+  .statrow .val{font-size:24px;font-weight:600}
+  .statrow .delta{font-size:13.5px;font-weight:600}
+  .statrow .delta.up{color:#006300}.statrow .delta.down{color:#d03b3b}
+  :root[data-theme="dark"] .statrow .delta.up,
+  :root:where(:not([data-theme="light"])) .statrow .delta.up{color:#0ca30c}
+  .statrow .hl{font-size:12.5px;color:var(--ink-3)}
+  svg{display:block;width:100%}
+  .tooltip{position:fixed;pointer-events:none;background:var(--surface-1);
+    border:1px solid var(--border);box-shadow:0 4px 18px rgba(0,0,0,.14);
+    border-radius:9px;padding:8px 11px;font-size:12.5px;z-index:40;min-width:150px;display:none}
+  .tooltip .tdate{color:var(--ink-3);margin-bottom:5px;font-size:11.5px}
+  .tooltip .trow{display:flex;align-items:center;gap:7px;margin:2px 0}
+  .tooltip .tkey{width:12px;border-top:3px solid var(--c);border-radius:2px;flex:none}
+  .tooltip .tkey.dash{border-top-style:dashed}
+  .tooltip .tval{font-weight:600;margin-left:auto;padding-left:12px;font-variant-numeric:tabular-nums}
+  .tooltip .tname{color:var(--ink-2)}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 2px 2px;font-size:12.5px;color:var(--ink-2)}
+  .legend .litem{display:flex;gap:7px;align-items:center}
+  .legend .key{width:16px;border-top:3px solid var(--c);border-radius:2px}
+  .legend .key.dash{border-top-style:dashed}
+  .note{font-size:12px;color:var(--ink-3);margin-top:18px;line-height:1.55}
+  .note a{color:inherit}
+  table.tview{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  table.tview th,table.tview td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--grid);
+    font-variant-numeric:tabular-nums}
+  table.tview th:first-child,table.tview td:first-child{text-align:left}
+  table.tview th{color:var(--ink-3);font-weight:600;position:sticky;top:0;background:var(--surface-1)}
+  .tscroll{max-height:420px;overflow:auto}
+  .pill{font-size:11px;background:rgba(128,128,128,.13);color:var(--ink-3);
+    padding:2px 8px;border-radius:999px;margin-left:auto}
+  .card.clickable{cursor:pointer;transition:box-shadow .12s}
+  .card.clickable:hover{box-shadow:0 3px 14px rgba(0,0,0,.10);border-color:rgba(128,128,128,.35)}
+  .card .expand{position:absolute;top:10px;right:10px;border:0;background:transparent;
+    color:var(--ink-3);font-size:16px;cursor:pointer;border-radius:6px;padding:2px 7px}
+  .card .expand:hover{background:rgba(128,128,128,.12);color:var(--ink-1)}
+  .perfrow{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:6px}
+  .perfcell{background:rgba(128,128,128,.06);border:1px solid var(--border);border-radius:9px;
+    padding:8px 6px;text-align:center}
+  .perfcell .plab{font-size:11.5px;color:var(--ink-3)}
+  .perfcell .pval{font-size:16px;font-weight:600;margin-top:2px}
+  .perfcell .pval.up{color:#006300}.perfcell .pval.down{color:#d03b3b}
+  :root[data-theme="dark"] .perfcell .pval.up,
+  :root:where(:not([data-theme="light"])) .perfcell .pval.up{color:#0ca30c}
+  @media(max-width:640px){.perfrow{grid-template-columns:repeat(4,1fr)}}
+  button.backbtn{background:var(--chip-on);color:var(--chip-on-ink);font-weight:600;
+    border-radius:8px;padding:7px 14px;white-space:nowrap}
+  button.backbtn:hover{opacity:.88;background:var(--chip-on)}
+  header.masthead h1{cursor:pointer}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <h1>Market Observatory</h1>
+  <div class="sub">Currencies &amp; commodities · 10-year history, daily detail · data to <b id="asof"></b>
+    <span style="float:right">Minato Wealth — internal analysis</span></div>
+</header>
+<div class="wrap">
+
+  <div class="filters" role="toolbar" aria-label="Filters">
+    <div class="fgroup" id="viewSeg">
+      <button class="seg" data-v="trend" aria-pressed="true">Trend</button>
+      <button class="seg" data-v="rebase" aria-pressed="false">Relative (=100)</button>
+    </div>
+    <div class="fgroup" id="rangeSeg"><span class="lbl">Range</span></div>
+    <div class="custom-range" id="customRange">
+      <input type="date" id="d1"> <span>to</span> <input type="date" id="d2">
+    </div>
+    <div class="fgroup" id="baseSeg"><span class="lbl">Base</span></div>
+    <div class="spacer"></div>
+    <div class="fgroup">
+      <button class="seg" id="maBtn" aria-pressed="false">50-day average</button>
+      <button class="seg" id="tblBtn" aria-pressed="false">Table</button>
+      <button class="seg" id="darkBtn" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+
+  <div class="chips" id="chips" role="group" aria-label="Instruments"></div>
+
+  <div id="content" class="grid"></div>
+
+  <div class="note" id="foot"></div>
+</div>
+<div class="tooltip" id="tip"></div>
+
+<script>
+const DATA = /*__DATA__*/;
+
+/* ---------- model ---------- */
+const CCY = { gbp:{sym:'£',name:'Pound'}, usd:{sym:'$',name:'US dollar'}, eur:{sym:'€',name:'Euro'},
+              jpy:{sym:'¥',name:'Yen'}, chf:{sym:'Fr',name:'Swiss franc'} };
+const S = DATA.series;
+const dates = DATA.dates;
+// forward-fill each raw series onto the master calendar
+function ffill(arr){ const a=new Array(dates.length).fill(null); let last=null;
+  for(let i=0;i<dates.length;i++){ const v=arr[i]; if(v!=null)last=v; a[i]=last; } return a; }
+const F = {}; for(const k in S) F[k]=ffill(S[k]);
+// per-USD helpers (usd itself = 1)
+const perUSD = { usd:F.gbp_usd.map(_=>1), gbp:F.gbp_usd, eur:F.eur_usd, jpy:F.jpy_usd, chf:F.chf_usd };
+function cross(base,quote){ // value of 1 unit of base, in quote
+  return dates.map((_,i)=> perUSD[base][i]&&perUSD[quote][i] ? perUSD[quote][i]/perUSD[base][i] : null); }
+
+const state = { view:'trend', range:'3Y', base:'gbp', ma:false, table:false, focus:null,
+  sel:new Set(['fx_usd','fx_eur','fx_jpy','fx_chf','gold_usd','gold_gbp','silver','brent','wti']) };
+
+function instruments(){
+  const b = state.base, list=[];
+  for(const q of ['usd','eur','jpy','chf','gbp']){
+    if(q===b) continue;
+    list.push({ id:'fx_'+q, kind:'fx', color:'--s-'+(q==='gbp'?'usd':q), dash:false,
+      label:b.toUpperCase()+'/'+q.toUpperCase(),
+      long:`1 ${b.toUpperCase()} in ${CCY[q].name.toLowerCase()}s`,
+      unit:CCY[q].sym, dp:(q==='jpy'?1:4), vals:cross(b,q) });
+  }
+  list.push({id:'gold_usd',kind:'cmd',color:'--s-gold',dash:false,label:'Gold $/oz',long:'Gold, US dollars per troy ounce',unit:'$',dp:0,vals:F.gold_usd});
+  list.push({id:'gold_gbp',kind:'cmd',color:'--s-gold',dash:true, label:'Gold £/oz',long:'Gold, sterling per troy ounce',unit:'£',dp:0,vals:F.gold_gbp});
+  list.push({id:'silver',  kind:'cmd',color:'--s-silver',dash:false,label:'Silver $/oz',long:'Silver, US dollars per troy ounce',unit:'$',dp:2,vals:F.silver_usd});
+  list.push({id:'brent',   kind:'cmd',color:'--s-brent',dash:false,label:'Brent $/bbl',long:'Brent crude, US dollars per barrel',unit:'$',dp:2,vals:F.brent});
+  list.push({id:'wti',     kind:'cmd',color:'--s-wti',dash:false,label:'WTI $/bbl',long:'WTI crude, US dollars per barrel',unit:'$',dp:2,vals:F.wti});
+  return list;
+}
+
+/* ---------- range ---------- */
+const PRESETS = ['1M','3M','6M','1Y','3Y','5Y','10Y','Max','Custom'];
+function rangeIdx(){
+  const last = dates.length-1, end = state.range==='Custom' && el('d2').value
+      ? bisect(el('d2').value) : last;
+  let startDate;
+  if(state.range==='Custom' && el('d1').value) return [bisect(el('d1').value), end];
+  if(state.range==='Max') return [0,last];
+  const n=parseInt(state.range), unit=state.range.slice(-1);
+  const endD=new Date(dates[end]); const s=new Date(endD);
+  if(unit==='M') s.setMonth(s.getMonth()-n); else s.setFullYear(s.getFullYear()-n);
+  startDate = s.toISOString().slice(0,10);
+  return [bisect(startDate), end];
+}
+function bisect(d){ let lo=0,hi=dates.length-1; while(lo<hi){const m=(lo+hi)>>1; if(dates[m]<d)lo=m+1;else hi=m;} return lo; }
+
+/* ---------- utils ---------- */
+const el = id=>document.getElementById(id);
+const css = v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function fmt(v,dp,unit){ if(v==null)return '—';
+  const s = v.toLocaleString('en-GB',{minimumFractionDigits:dp,maximumFractionDigits:dp});
+  return (unit||'')+s; }
+function fdate(d){ const t=new Date(d); return t.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function downsample(idx0,idx1,limit){ // weekly beyond the daily limit (default ~3.2y)
+  const span=idx1-idx0, pts=[];
+  if(span<=(limit||830)){ for(let i=idx0;i<=idx1;i++) pts.push(i); return pts; }
+  let lastWk=-1;
+  for(let i=idx0;i<=idx1;i++){ const t=new Date(dates[i]);
+    const wk=Math.floor((t-0)/(7*864e5));
+    if(wk!==lastWk){ pts.push(i); lastWk=wk; } }
+  if(pts[pts.length-1]!==idx1) pts.push(idx1);
+  return pts;
+}
+function movavg(vals,n){ const out=new Array(vals.length).fill(null); let sum=0,q=[];
+  for(let i=0;i<vals.length;i++){ const v=vals[i]; if(v!=null){q.push(v);sum+=v;if(q.length>n)sum-=q.shift();}
+    out[i]= q.length===n? sum/n : null; } return out; }
+
+/* ---------- chart renderer ---------- */
+function lineChart(cfg){
+  // cfg: {series:[{pts:[[i,v]],color,dash,label,unit,dp}], w,h, yFmt, endLabels}
+  const w=cfg.w||520,h=cfg.h||230, padL=54,padR=cfg.endLabels?112:14,padT=12,padB=24;
+  const iw=w-padL-padR, ih=h-padT-padB;
+  let ymin=Infinity,ymax=-Infinity,xmin=Infinity,xmax=-Infinity;
+  for(const s of cfg.series) for(const [i,v] of s.pts){ if(v==null)continue;
+    if(v<ymin)ymin=v; if(v>ymax)ymax=v; if(i<xmin)xmin=i; if(i>xmax)xmax=i; }
+  if(!isFinite(ymin)) return document.createElementNS('http://www.w3.org/2000/svg','svg');
+  const yr=ymax-ymin||1; ymin-=yr*.06; ymax+=yr*.06;
+  const X=i=>padL+(i-xmin)/(xmax-xmin||1)*iw, Y=v=>padT+ih-(v-ymin)/(ymax-ymin)*ih;
+  const NS='http://www.w3.org/2000/svg', svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`); svg.setAttribute('height',h);
+  const g=(tag,at)=>{const n=document.createElementNS(NS,tag);for(const k in at)n.setAttribute(k,at[k]);svg.appendChild(n);return n;}
+  // y grid: 4 clean ticks
+  const step=niceStep((ymax-ymin)/4);
+  for(let v=Math.ceil(ymin/step)*step; v<=ymax; v+=step){
+    g('line',{x1:padL,x2:w-padR,y1:Y(v),y2:Y(v),stroke:css('--grid'),'stroke-width':1});
+    const t=g('text',{x:padL-8,y:Y(v)+4,'text-anchor':'end',fill:css('--ink-3'),
+      'font-size':11,'font-family':'inherit'});
+    t.textContent = compact(v,cfg.dp);
+  }
+  // x axis labels: ~5
+  const nt=5;
+  for(let k=0;k<=nt;k++){ const i=Math.round(xmin+(xmax-xmin)*k/nt);
+    const t=g('text',{x:X(i),y:h-6,'text-anchor':k===0?'start':(k===nt?'end':'middle'),
+      fill:css('--ink-3'),'font-size':11,'font-family':'inherit'});
+    const d=new Date(dates[i]);
+    t.textContent=(xmax-xmin>760)? d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'})
+                                  : d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  }
+  g('line',{x1:padL,x2:w-padR,y1:padT+ih,y2:padT+ih,stroke:css('--axis'),'stroke-width':1});
+  const endQueue=[];
+  // series lines
+  for(const s of cfg.series){
+    let dstr='',pen=false;
+    for(const [i,v] of s.pts){ if(v==null){pen=false;continue}
+      dstr+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1); pen=true; }
+    const p=g('path',{d:dstr,fill:'none',stroke:css(s.color),'stroke-width':s.aux?1.4:2,
+      'stroke-linejoin':'round','stroke-linecap':'round'});
+    if(s.dash) p.setAttribute('stroke-dasharray','6 5');
+    if(s.aux){ p.setAttribute('opacity','.55'); p.setAttribute('stroke-dasharray','2 4'); }
+    // end marker + ring
+    const lastPt=[...s.pts].reverse().find(p=>p[1]!=null);
+    if(lastPt && !s.aux){
+      g('circle',{cx:X(lastPt[0]),cy:Y(lastPt[1]),r:6,fill:css('--surface-1')});
+      g('circle',{cx:X(lastPt[0]),cy:Y(lastPt[1]),r:4,fill:css(s.color)});
+      if(cfg.endLabels) endQueue.push({y:Y(lastPt[1]), label:s.endLabel!=null? s.endLabel:compact(lastPt[1],s.dp)});
+    }
+  }
+  // selective end labels: only where they fit without collision (legend + tooltip carry the rest)
+  if(cfg.endLabels){
+    endQueue.sort((a,b)=>a.y-b.y);
+    let lastY=-Infinity;
+    for(const q of endQueue){
+      if(q.y-lastY<14) continue;               // skip colliding labels rather than stack them
+      const t=g('text',{x:w-padR+14,y:q.y+4,fill:css('--ink-1'),
+        'font-size':11.5,'font-weight':600,'font-family':'inherit'});
+      t.textContent=q.label; lastY=q.y;
+    }
+  }
+  svg.__scale={X,Y,xmin,xmax,padL,padR,w,h,padT,ih};
+  return svg;
+}
+function niceStep(x){ const p=Math.pow(10,Math.floor(Math.log10(x||1)));
+  for(const m of [1,2,2.5,5,10]) if(m*p>=x) return m*p; return 10*p; }
+function compact(v,dp){ if(Math.abs(v)>=1000) return (v/1000).toLocaleString('en-GB',{maximumFractionDigits:1})+'k';
+  return v.toLocaleString('en-GB',{maximumFractionDigits: dp!=null? Math.min(dp,2):2}); }
+
+/* ---------- crosshair/tooltip layer ---------- */
+function attachHover(card,svg,seriesList,ptsIdx){
+  const tip=el('tip');
+  const sc=svg.__scale; if(!sc) return;
+  let vline=null;
+  function move(ev){
+    const r=svg.getBoundingClientRect();
+    const fx=(ev.clientX-r.left)/r.width*sc.w;
+    if(fx<sc.padL-6||fx>sc.w-sc.padR+6){ leave(); return; }
+    // nearest sampled point
+    let best=ptsIdx[0],bd=1e9;
+    for(const i of ptsIdx){ const d=Math.abs(sc.X(i)-fx); if(d<bd){bd=d;best=i;} }
+    if(!vline){ vline=document.createElementNS('http://www.w3.org/2000/svg','line');
+      vline.setAttribute('stroke',css('--axis')); vline.setAttribute('stroke-width',1);
+      svg.appendChild(vline); }
+    vline.setAttribute('x1',sc.X(best)); vline.setAttribute('x2',sc.X(best));
+    vline.setAttribute('y1',sc.padT); vline.setAttribute('y2',sc.padT+sc.ih);
+    tip.style.display='block';
+    while(tip.firstChild) tip.removeChild(tip.firstChild);
+    const td=document.createElement('div'); td.className='tdate'; td.textContent=fdate(dates[best]); tip.appendChild(td);
+    for(const s of seriesList){
+      const row=document.createElement('div'); row.className='trow';
+      const k=document.createElement('span'); k.className='tkey'+(s.dash?' dash':''); k.style.setProperty('--c',css(s.color)); row.appendChild(k);
+      const nm=document.createElement('span'); nm.className='tname'; nm.textContent=s.label; row.appendChild(nm);
+      const v=document.createElement('span'); v.className='tval';
+      v.textContent = s.tipFmt? s.tipFmt(best) : fmt(s.valsAt(best),s.dp,s.unit); row.appendChild(v);
+      tip.appendChild(row);
+    }
+    const tw=tip.offsetWidth, x= ev.clientX+16+tw>innerWidth? ev.clientX-tw-14 : ev.clientX+14;
+    tip.style.left=x+'px'; tip.style.top=Math.min(ev.clientY+14,innerHeight-tip.offsetHeight-10)+'px';
+  }
+  function leave(){ tip.style.display='none'; if(vline){vline.remove();vline=null;} }
+  svg.addEventListener('pointermove',move); svg.addEventListener('pointerleave',leave);
+}
+
+/* ---------- views ---------- */
+function render(){
+  const content=el('content'); content.innerHTML='';
+  const all=instruments();
+  if(state.focus && !all.some(x=>x.id===state.focus)) state.focus=null;
+  const inst=all.filter(x=>state.sel.has(normId(x.id)));
+  const [i0,i1]=rangeIdx();
+  el('asof').textContent=fdate(DATA.generated);
+  renderChips();
+  if(state.focus && state.view==='trend'){
+    const s=all.find(x=>x.id===state.focus);
+    const ptsIdx=downsample(i0,i1,1320);           // daily detail up to ~5y in focus
+    renderFocus(content,s,i0,i1,ptsIdx);
+    if(state.table) renderTable(content,[s],ptsIdx);
+  } else {
+    const ptsIdx=downsample(i0,i1);
+    if(state.view==='trend') renderTrend(content,inst,i0,i1,ptsIdx);
+    else renderRebase(content,inst,i0,i1,ptsIdx);
+    if(state.table) renderTable(content,inst,ptsIdx);
+  }
+  renderFoot();
+}
+function normId(id){ return id.startsWith('fx_')? id : id; }
+
+function renderTrend(content,inst,i0,i1,ptsIdx){
+  for(const s of inst){
+    const card=document.createElement('div'); card.className='card';
+    const h=document.createElement('h3');
+    const k=document.createElement('span'); k.className='key'+(s.dash?' dash':''); k.style.setProperty('--c',css(s.color)); h.appendChild(k);
+    h.appendChild(document.createTextNode(s.long));
+    card.appendChild(h);
+    const v0=firstVal(s.vals,i0,i1), v1=lastVal(s.vals,i0,i1);
+    const chg=v0&&v1? (v1/v0-1)*100:null;
+    let hi=-Infinity,lo=Infinity;
+    for(let i=i0;i<=i1;i++){const v=s.vals[i]; if(v==null)continue; if(v>hi)hi=v; if(v<lo)lo=v;}
+    const sr=document.createElement('div'); sr.className='statrow';
+    sr.innerHTML=`<span class="val">${fmt(v1,s.dp,s.unit)}</span>`+
+      (chg!=null?`<span class="delta ${chg>=0?'up':'down'}">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(1)}% over range</span>`:'')+
+      `<span class="hl">high ${fmt(hi,s.dp,s.unit)} · low ${fmt(lo,s.dp,s.unit)}</span>`;
+    card.appendChild(sr);
+    const series=[{pts:ptsIdx.map(i=>[i,s.vals[i]]),color:s.color,dash:s.dash,dp:s.dp,unit:s.unit,
+                   label:s.label, valsAt:i=>s.vals[i]}];
+    if(state.ma){ const ma=movavg(s.vals,50);
+      series.push({pts:ptsIdx.map(i=>[i,ma[i]]),color:s.color,aux:true,dp:s.dp,unit:s.unit,
+                   label:s.label+' 50d avg', valsAt:i=>ma[i]}); }
+    const svg=lineChart({series,dp:s.dp,w:520,h:210});
+    card.appendChild(svg);
+    attachHover(card,svg,series,ptsIdx);
+    card.classList.add('clickable'); card.title='Click to expand '+s.label;
+    card.addEventListener('click',()=>{ state.focus=s.id; render(); window.scrollTo({top:0}); });
+    const ex=document.createElement('button'); ex.className='expand'; ex.textContent='⤢';
+    ex.setAttribute('aria-label','Expand '+s.label);
+    ex.onclick=ev=>{ev.stopPropagation(); state.focus=s.id; render(); window.scrollTo({top:0});};
+    card.appendChild(ex);
+    content.appendChild(card);
+  }
+}
+
+function renderFocus(content,s,i0,i1,ptsIdx){
+  const card=document.createElement('div'); card.className='card wide';
+  // header with back button
+  const top=document.createElement('div'); top.style.cssText='display:flex;align-items:center;gap:12px;margin-bottom:4px';
+  const back=document.createElement('button'); back.className='seg backbtn'; back.textContent='← Back to all instruments';
+  back.onclick=()=>{ state.focus=null; render(); };
+  top.appendChild(back);
+  const h=document.createElement('h3'); h.style.margin='0';
+  const k=document.createElement('span'); k.className='key'+(s.dash?' dash':''); k.style.setProperty('--c',css(s.color)); h.appendChild(k);
+  h.appendChild(document.createTextNode(s.long)); top.appendChild(h);
+  card.appendChild(top);
+  // stats with dated high/low
+  const v0=firstVal(s.vals,i0,i1), v1=lastVal(s.vals,i0,i1);
+  const chg=v0&&v1? (v1/v0-1)*100:null;
+  let hi=-Infinity,lo=Infinity,hiD=null,loD=null;
+  for(let i=i0;i<=i1;i++){const v=s.vals[i]; if(v==null)continue;
+    if(v>hi){hi=v;hiD=i;} if(v<lo){lo=v;loD=i;}}
+  const sr=document.createElement('div'); sr.className='statrow';
+  sr.innerHTML=`<span class="val" style="font-size:30px">${fmt(v1,s.dp,s.unit)}</span>`+
+    (chg!=null?`<span class="delta ${chg>=0?'up':'down'}">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(1)}% over range</span>`:'')+
+    `<span class="hl">high ${fmt(hi,s.dp,s.unit)} (${fdate(dates[hiD])}) · low ${fmt(lo,s.dp,s.unit)} (${fdate(dates[loD])})</span>`;
+  card.appendChild(sr);
+  // big chart, 50d + 200d averages when toggled
+  const series=[{pts:ptsIdx.map(i=>[i,s.vals[i]]),color:s.color,dash:s.dash,dp:s.dp,unit:s.unit,
+                 label:s.label, valsAt:i=>s.vals[i]}];
+  if(state.ma){
+    const ma50=movavg(s.vals,50), ma200=movavg(s.vals,200);
+    series.push({pts:ptsIdx.map(i=>[i,ma50[i]]),color:s.color,aux:true,dp:s.dp,unit:s.unit,
+                 label:'50-day avg', valsAt:i=>ma50[i]});
+    series.push({pts:ptsIdx.map(i=>[i,ma200[i]]),color:'--ink-3',aux:true,dp:s.dp,unit:s.unit,
+                 label:'200-day avg', valsAt:i=>ma200[i]});
+  }
+  const svg=lineChart({series,dp:s.dp,w:1120,h:430});
+  card.appendChild(svg);
+  attachHover(card,svg,series,ptsIdx);
+  if(state.ma){
+    const lg=document.createElement('div'); lg.className='legend';
+    const items=[[s.label,s.color,s.dash],['50-day average',s.color,true],['200-day average','--ink-3',true]];
+    for(const [lb,c,dsh] of items){ const li=document.createElement('span'); li.className='litem';
+      const kk=document.createElement('span'); kk.className='key'+(dsh?' dash':''); kk.style.setProperty('--c',css(c)); li.appendChild(kk);
+      li.appendChild(document.createTextNode(lb)); lg.appendChild(li); }
+    card.appendChild(lg);
+  }
+  content.appendChild(card);
+  // period-performance strip: change over each standard window, ending at latest data
+  const strip=document.createElement('div'); strip.className='card wide';
+  const sh=document.createElement('h3'); sh.textContent='Performance over standard periods (to latest data)'; strip.appendChild(sh);
+  const row=document.createElement('div'); row.className='perfrow';
+  const last=dates.length-1, vNow=lastVal(s.vals,0,last);
+  for(const p of ['1M','3M','6M','1Y','3Y','5Y','10Y']){
+    const n=parseInt(p), unit=p.slice(-1), endD=new Date(dates[last]), t=new Date(endD);
+    if(unit==='M') t.setMonth(t.getMonth()-n); else t.setFullYear(t.getFullYear()-n);
+    const j=bisect(t.toISOString().slice(0,10));
+    const vThen=firstVal(s.vals,j,last);
+    const c= vThen&&vNow? (vNow/vThen-1)*100:null;
+    const cell=document.createElement('div'); cell.className='perfcell';
+    const lab=document.createElement('div'); lab.className='plab'; lab.textContent=p; cell.appendChild(lab);
+    const dv=document.createElement('div'); dv.className='pval '+(c==null?'':(c>=0?'up':'down'));
+    dv.textContent= c==null?'—':(c>=0?'+':'−')+Math.abs(c).toFixed(1)+'%'; cell.appendChild(dv);
+    row.appendChild(cell);
+  }
+  strip.appendChild(row);
+  content.appendChild(strip);
+  // for gold, offer the other denomination one click away
+  const twin = s.id==='gold_usd'? 'gold_gbp' : s.id==='gold_gbp'? 'gold_usd' : null;
+  if(twin){ const tw=instruments().find(x=>x.id===twin);
+    const b=document.createElement('button'); b.className='seg'; b.textContent='View '+tw.label+' →';
+    b.style.cssText='border:1px solid var(--border);border-radius:8px;margin-top:2px;justify-self:start';
+    b.onclick=()=>{state.focus=twin; render();};
+    content.appendChild(b); }
+}
+
+function renderRebase(content,inst,i0,i1,ptsIdx){
+  const card=document.createElement('div'); card.className='card wide';
+  const h=document.createElement('h3');
+  h.appendChild(document.createTextNode('Relative performance — all rebased to 100 at '+fdate(dates[i0])));
+  const pill=document.createElement('span'); pill.className='pill';
+  pill.textContent='above 100 = gained since start of range'; h.appendChild(pill);
+  card.appendChild(h);
+  const series=[];
+  for(const s of inst){
+    const base=firstVal(s.vals,i0,i1); if(!base) continue;
+    const rb=i=> s.vals[i]!=null? s.vals[i]/base*100:null;
+    const v1=lastVal(s.vals,i0,i1);
+    series.push({pts:ptsIdx.map(i=>[i,rb(i)]),color:s.color,dash:s.dash,dp:1,
+      label:s.label, endLabel:s.label+'  '+(v1/base*100).toFixed(0),
+      valsAt:rb, tipFmt:i=>{const v=rb(i); return v==null?'—':v.toFixed(1);} });
+  }
+  const svg=lineChart({series,w:1120,h:430,endLabels:true,dp:0});
+  card.appendChild(svg);
+  // legend (always for >=2 series)
+  const lg=document.createElement('div'); lg.className='legend';
+  for(const s of series){ const li=document.createElement('span'); li.className='litem';
+    const k=document.createElement('span'); k.className='key'+(s.dash?' dash':''); k.style.setProperty('--c',css(s.color)); li.appendChild(k);
+    li.appendChild(document.createTextNode(s.label)); lg.appendChild(li); }
+  card.appendChild(lg);
+  attachHover(card,svg,series,ptsIdx);
+  content.appendChild(card);
+}
+
+function renderTable(content,inst,ptsIdx){
+  const card=document.createElement('div'); card.className='card wide';
+  const h=document.createElement('h3'); h.textContent='Data table — sampled points in view'; card.appendChild(h);
+  const sc=document.createElement('div'); sc.className='tscroll';
+  const t=document.createElement('table'); t.className='tview';
+  const tr=document.createElement('tr');
+  tr.appendChild(Object.assign(document.createElement('th'),{textContent:'Date'}));
+  for(const s of inst) tr.appendChild(Object.assign(document.createElement('th'),{textContent:s.label}));
+  t.appendChild(tr);
+  for(let k=ptsIdx.length-1;k>=0;k--){ const i=ptsIdx[k]; const r=document.createElement('tr');
+    r.appendChild(Object.assign(document.createElement('td'),{textContent:dates[i]}));
+    for(const s of inst) r.appendChild(Object.assign(document.createElement('td'),{textContent:fmt(s.vals[i],s.dp,'')}));
+    t.appendChild(r); }
+  sc.appendChild(t); card.appendChild(sc); content.appendChild(card);
+}
+
+function firstVal(vals,i0,i1){ for(let i=i0;i<=i1;i++) if(vals[i]!=null) return vals[i]; return null; }
+function lastVal(vals,i0,i1){ for(let i=i1;i>=i0;i--) if(vals[i]!=null) return vals[i]; return null; }
+
+/* ---------- chrome ---------- */
+function renderChips(){
+  const box=el('chips'); box.innerHTML='';
+  for(const s of instruments()){
+    const b=document.createElement('button'); b.className='chip'; b.type='button';
+    b.style.setProperty('--c',css(s.color));
+    const focused = state.focus && state.view==='trend';
+    b.setAttribute('aria-pressed', focused? (state.focus===s.id?'true':'false')
+                                          : (state.sel.has(s.id)?'true':'false'));
+    const k=document.createElement('span'); k.className='key'+(s.dash?' dash':''); b.appendChild(k);
+    b.appendChild(document.createTextNode(s.label));
+    b.onclick=()=>{ if(focused){ state.focus=s.id; }
+      else { state.sel.has(s.id)? state.sel.delete(s.id):state.sel.add(s.id); } render(); };
+    box.appendChild(b);
+  }
+}
+function seg(container,items,get,set,label){
+  for(const it of items){
+    const b=document.createElement('button'); b.className='seg'; b.textContent=it;
+    b.setAttribute('aria-pressed', get()===it?'true':'false');
+    b.onclick=()=>{ set(it);
+      [...container.querySelectorAll('.seg')].forEach(x=>x.setAttribute('aria-pressed', x.textContent===it?'true':'false'));
+      el('customRange').style.display= (container.id==='rangeSeg'&&it==='Custom')?'flex':(container.id==='rangeSeg'?'none':el('customRange').style.display);
+      render(); };
+    container.appendChild(b);
+  }
+}
+seg(el('rangeSeg'),PRESETS,()=>state.range,v=>state.range=v);
+seg(el('baseSeg'),['GBP','USD','EUR','JPY','CHF'],()=>state.base.toUpperCase(),v=>{
+  const old=state.base; state.base=v.toLowerCase();
+  // remap fx selections: keep all fx chips on after a flip (simplest, predictable)
+  const fx=[...state.sel].filter(x=>x.startsWith('fx_'));
+  fx.forEach(x=>state.sel.delete(x));
+  for(const q of ['usd','eur','jpy','chf','gbp']) if(q!==state.base) state.sel.add('fx_'+q);
+});
+el('viewSeg').querySelectorAll('.seg').forEach(b=>b.onclick=()=>{
+  state.view=b.dataset.v;
+  el('viewSeg').querySelectorAll('.seg').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+  render();});
+el('maBtn').onclick=()=>{state.ma=!state.ma;el('maBtn').setAttribute('aria-pressed',state.ma);render();};
+el('tblBtn').onclick=()=>{state.table=!state.table;el('tblBtn').setAttribute('aria-pressed',state.table);render();};
+el('darkBtn').onclick=()=>{
+  const r=document.documentElement, dark=r.getAttribute('data-theme')==='dark';
+  r.setAttribute('data-theme', dark?'light':'dark');
+  el('darkBtn').setAttribute('aria-pressed',!dark); render(); };
+el('d1').onchange=el('d2').onchange=()=>render();
+// title = home; Escape = home
+document.querySelector('header.masthead h1').title='Back to all instruments';
+document.querySelector('header.masthead h1').addEventListener('click',()=>{ state.focus=null; render(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&state.focus){ state.focus=null; render(); } });
+el('d1').min=el('d2').min=dates[0]; el('d1').max=el('d2').max=dates[dates.length-1];
+
+function renderFoot(){
+  el('foot').innerHTML =
+   `<b>Sources.</b> Currencies: US Federal Reserve H.10 daily rates (via the open exchange-rates data package), `+
+   `cross-rates computed against the selected base; latest days from an aggregated open feed. `+
+   `Gold &amp; silver: LBMA daily benchmark prices (USD and GBP) to ${fdate(DATA.lbma_cutover)}; `+
+   `from ${fdate(DATA.lbma_cutover)} the recent tail is provisional, drawn from an aggregated open market feed pending LBMA publication. `+
+   `Oil: US Energy Information Administration daily spot prices, Brent and WTI. `+
+   `Charts use end-of-day data; ranges above three years are shown at weekly resolution for clarity. `+
+   `Internal analysis tool — not client-facing material. `+
+   `The value of investments can go down as well as up, and past performance is not a reliable indicator of future results.`;
+}
+render();
+</script>
+</body>
+</html>
