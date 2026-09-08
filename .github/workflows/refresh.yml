@@ -6,7 +6,9 @@ name: Nightly refresh
 
 on:
   schedule:
-    - cron: "30 5 * * 1-5"   # weekdays 05:30 UTC
+    - cron: "17 5 * * 1-5"   # weekdays, first attempt 05:17 UTC
+    - cron: "17 6 * * 1-5"   # second attempt 06:17 UTC (no-op if the first published)
+    - cron: "17 7 * * 1-5"   # third attempt 07:17 UTC (no-op if already published)
   workflow_dispatch:          # manual run from the Actions tab
 
 permissions:
